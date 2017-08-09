@@ -799,20 +799,6 @@ openerp.mail = function (session) {
                 // get all wall messages if is not a mail.Wall
                 _.each(this.options.root_thread.messages, function (msg) {messages.push(msg); messages.concat(msg.get_childs());});
             }
-
-            _.each(messages, function (thread) {
-                if (thread.author_id && !thread.author_id[0] &&
-                    !_.find(self.recipients, function (recipient) {return recipient.email_address == thread.author_id[3];}) &&
-                    _.some([thread.author_id[1], thread.author_id[2], thread.author_id[3]])) {
-                    self.recipients.push({  'full_name': thread.author_id[1],
-                                            'name': thread.author_id[2],
-                                            'email_address': thread.author_id[3],
-                                            'partner_id': false,
-                                            'checked': true,
-                                            'reason': 'Incoming email author'
-                                        });
-                }
-            });
             return self.recipients;
         },
 
