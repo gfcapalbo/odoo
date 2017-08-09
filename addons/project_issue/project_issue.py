@@ -416,18 +416,6 @@ class project_issue(osv.Model):
         aliases = self.pool['project.project'].message_get_reply_to(cr, uid, list(project_ids), context=context)
         return dict((issue.id, aliases.get(issue.project_id and issue.project_id.id or 0, False)) for issue in issues)
 
-    def message_get_suggested_recipients(self, cr, uid, ids, context=None):
-        recipients = super(project_issue, self).message_get_suggested_recipients(cr, uid, ids, context=context)
-        try:
-            for issue in self.browse(cr, uid, ids, context=context):
-                if issue.partner_id:
-                    self._message_add_suggested_recipient(cr, uid, recipients, issue, partner=issue.partner_id, reason=_('Customer'))
-                elif issue.email_from:
-                    self._message_add_suggested_recipient(cr, uid, recipients, issue, email=issue.email_from, reason=_('Customer Email'))
-        except (osv.except_osv, orm.except_orm):  # no read access rights -> just ignore suggested recipients because this imply modifying followers
-            pass
-        return recipients
-
     def message_new(self, cr, uid, msg, custom_values=None, context=None):
         """ Overrides mail_thread message_new that is called by the mailgateway
             through message_process.
