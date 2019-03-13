@@ -6,7 +6,7 @@ import operator
 import re
 
 from odoo import api, fields, models, tools, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, MissingError
 from odoo.http import request
 from odoo.modules import get_module_resource
 from odoo.tools.safe_eval import safe_eval
@@ -227,6 +227,7 @@ class IrUiMenu(models.Model):
         :return: the menu root
         :rtype: dict('children': menu_nodes)
         """
+        self._check_menu_corruption()
         fields = ['name', 'sequence', 'parent_id', 'action', 'web_icon', 'web_icon_data']
         menu_roots = self.get_user_roots()
         menu_roots_data = menu_roots.read(fields) if menu_roots else []
@@ -267,6 +268,18 @@ class IrUiMenu(models.Model):
         (menu_roots + menus)._set_menuitems_xmlids(menu_root)
 
         return menu_root
+
+    def _check_menu_corruption(self):
+        """Raise error when menu hierarchy has become corrupted."""
+        STATEMENT = \
+            "SELECT COUNT(*) FROM ir_ui_menu" \
+            " WHERE NOT parent_id IS NULL" \
+            "   AND (parent_left is null or parent_right is null)"
+        self.env.cr.execute(STATEMENT)
+        count = self.env.cr.fetchone()[0]
+        if count > 0:
+            raise MissingError(
+                "Menu's have been corrupted. Regenerate parent hierarchy.")
 
     def _set_menuitems_xmlids(self, menu_root):
         menuitems = self.env['ir.model.data'].sudo().search([
