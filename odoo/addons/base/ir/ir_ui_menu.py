@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import base64
+import logging
 import operator
 import re
 
 from odoo import api, fields, models, tools, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, MissingError
 from odoo.http import request
 from odoo.modules import get_module_resource
 from odoo.tools.safe_eval import safe_eval
 
 MENU_ITEM_SEPARATOR = "/"
 NUMBER_PARENS = re.compile(r"\(([0-9]+)\)")
+
+
+_logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class IrUiMenu(models.Model):
@@ -227,6 +230,7 @@ class IrUiMenu(models.Model):
         :return: the menu root
         :rtype: dict('children': menu_nodes)
         """
+        self._check_menu_corruption()
         fields = ['name', 'sequence', 'parent_id', 'action', 'web_icon', 'web_icon_data']
         menu_roots = self.get_user_roots()
         menu_roots_data = menu_roots.read(fields) if menu_roots else []
@@ -267,6 +271,41 @@ class IrUiMenu(models.Model):
         (menu_roots + menus)._set_menuitems_xmlids(menu_root)
 
         return menu_root
+
+    def _check_menu_corruption(self):
+        """Raise error when menu hierarchy has become corrupted."""
+        STATEMENT = \
+            "SELECT COUNT(*) FROM ir_ui_menu" \
+            " WHERE NOT parent_id IS NULL" \
+            "   AND (parent_left is null or parent_right is null)"
+        self.env.cr.execute(STATEMENT)
+        count = self.env.cr.fetchone()[0]
+        if count > 0:
+            # It might be that parent_left and parent_right still need to
+            # be computed. Try this first.
+            self._parent_store_compute()
+            self.env.cr.execute(STATEMENT)  # retry
+            count = self.env.cr.fetchone()[0]
+            if count == 0:
+                return
+            # Definitely something wrong...
+            STATEMENT_EXTENDED = \
+                "SELECT mn.id, mn.parent_id, mn.name, dt.name, dt.module" \
+                " FROM ir_ui_menu mn" \
+                " LEFT OUTER JOIN ir_model_data dt" \
+                "     ON dt.model = 'ir.ui.menu' AND dt.res_id = mn.id" \
+                " WHERE NOT parent_id IS NULL" \
+                "   AND (parent_left is null or parent_right is null)"
+            self.env.cr.execute(STATEMENT_EXTENDED)
+            for record in self.env.cr.fetchall():
+                _logger.error(
+                    "Menu %s with id %d and parent_id %d is missing link"
+                    " to parent_left and/or parent_right.\n"
+                    "Menu added from %s.%s.",
+                    record[2], record[0], record[1],
+                    record[4] or '?', record[3] or '?')
+            raise MissingError(
+                "Menu's have been corrupted. Regenerate parent hierarchy.")
 
     def _set_menuitems_xmlids(self, menu_root):
         menuitems = self.env['ir.model.data'].sudo().search([
