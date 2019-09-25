@@ -7,10 +7,8 @@ var planner = require('web.planner.common');
 var session = require('web.session');
 
 var PlannerLauncher = planner.PlannerLauncher.extend({
-    start: function() {
-        core.bus.on("change_menu_section", this, this.on_menu_clicked);
-        return $.when(this._super.apply(this, arguments), this._loadPlannerDef);
-    },
+    start: function() {},
+    /* Replaced start function by noop to deactivate planner. */
     _fetch_planner_data: function () {
         var planner_by_menu = this.planner_by_menu = {};
         return this._rpc({
