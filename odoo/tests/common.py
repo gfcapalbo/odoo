@@ -180,6 +180,7 @@ class TransactionCase(BaseCase):
         self.uid = odoo.SUPERUSER_ID
         #: :class:`~odoo.api.Environment` for the current test case
         self.env = api.Environment(self.cr, self.uid, {})
+        self.env.user.partner_id.write({'lang': 'en_US'})
 
         @self.addCleanup
         def reset():
@@ -240,6 +241,8 @@ class SavepointCase(SingleTransactionCase):
     def setUp(self):
         self._savepoint_id = next(savepoint_seq)
         self.cr.execute('SAVEPOINT test_%d' % self._savepoint_id)
+        self.env.user.partner_id.write({'lang': 'en_US'})
+
     def tearDown(self):
         self.cr.execute('ROLLBACK TO SAVEPOINT test_%d' % self._savepoint_id)
         self.env.clear()
