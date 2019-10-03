@@ -20,6 +20,7 @@ var ListController = BasicController.extend({
     custom_events: _.extend({}, BasicController.prototype.custom_events, {
         add_record: '_onAddRecord',
         button_clicked: '_onButtonClicked',
+        td_clicked: '_onTdClicked',
         edit_line: '_onEditLine',
         save_line: '_onSaveLine',
         resequence: '_onResequence',
@@ -367,6 +368,10 @@ var ListController = BasicController.extend({
      * @param {OdooEvent} event
      */
     _onButtonClicked: function (event) {
+        event.stopPropagation();
+        this._callButtonAction(event.data.attrs, event.data.record);
+    },
+    _onTdClicked: function (event) {
         event.stopPropagation();
         this._callButtonAction(event.data.attrs, event.data.record);
     },

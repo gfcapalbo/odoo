@@ -33,6 +33,8 @@ var FIELD_CLASSES = {
 
 var ListRenderer = BasicRenderer.extend({
     events: {
+
+        'click tbody td': '_onTdClicked',
         'click tbody tr': '_onRowClicked',
         'click tbody .o_list_record_selector': '_onSelectRecord',
         'click thead th.o_column_sortable': '_onSortColumn',
@@ -263,7 +265,27 @@ var ListRenderer = BasicRenderer.extend({
             }
         }
         var $td = $('<td>', {class: tdClassName});
-
+        if (record.res_id && node.tag !== 'button' && $td.length) {
+            // TODO this should be moved to a handler
+            var self = this;
+            $td.on("click", function (e) {
+                e.stopPropagation();
+                self.trigger_up('td_clicked', {
+                    attrs: node.attrs,
+                    record: record,
+                });
+            });
+        } else if (node.tag !=='button' && $td.length) {
+            if (node.attrs.options.warn) {
+                var self = this;
+                $td.on("click", function (e) {
+                    e.stopPropagation();
+                    self.do_warn(_t("Warning"), _t('Please click on the "save" button first'));
+                });
+            } else {
+                $td.prop('disabled', true);
+            }
+        }
         // We register modifiers on the <td> element so that it gets the correct
         // modifiers classes (for styling)
         var modifiers = this._registerModifiers(node, record, $td, _.pick(options, 'mode'));
